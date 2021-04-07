@@ -40,6 +40,7 @@ var myGameArea = {
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.frameNo = 0;
+        this.ground_movement = 0;
         this.interval = setInterval(updateGameArea, 20);
     },
     clear: function () {
@@ -50,10 +51,24 @@ var myGameArea = {
 var myBackground = {
     canvas: document.getElementById("background_canvas"),
     start: function () {
+        this.imgWidth = 0;
         this.context = this.canvas.getContext("2d");
-        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.context.drawImage(imageRepository.background, 0, 0);
+        this.interval = setInterval(scrollBackground, 20);
+    },
+    scroll: function () {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.context.drawImage(imageRepository.background, -this.imgWidth, 0);
+        this.context.drawImage(imageRepository.background, -this.imgWidth + imageRepository.background.width, 0);
     }
+}
+
+function scrollBackground() {
+    if (myBackground.imgWidth > imageRepository.background.width) {
+        myBackground.imgWidth = 0;
+    }
+    myBackground.imgWidth += 0.5;
+    myBackground.scroll();
 }
 
 function component(width, height, color, x, y, type) {
@@ -68,11 +83,9 @@ function component(width, height, color, x, y, type) {
     this.gravity = 0;
     this.gravitySpeed = 0;
     this.rotation_angle = 30;
-    this.floor_height = imageRepository.ground.height - 50;
 
     this.update = function () {
         ctx = myGameArea.context;
-        ctx.drawImage(imageRepository.ground, 0, canvas_height - this.floor_height, canvas_width, imageRepository.ground.height);
 
         switch (this.type) {
             case "text":
@@ -161,7 +174,7 @@ function component(width, height, color, x, y, type) {
         this.gravitySpeed = 0;
     }
     this.hitBottomTop = function () {
-        var rockbottom = myGameArea.canvas.height - this.height - this.floor_height;
+        var rockbottom = myGameArea.canvas.height - this.height - (imageRepository.ground.height - 50);
         if (this.y > rockbottom) {
             saveHighscore();
             restartGame();
@@ -198,6 +211,7 @@ function saveHighscore() {
 function updateGameArea() {
     var x, height, gap, minHeight, maxHeight, minGap, maxGap;
     var obstacleWidth = 40;
+    var ground_movement;
     for (i = 0; i < myObstacles.length; i += 1) {
         if (myGamePiece.crashWith(myObstacles[i])) {
             saveHighscore();
@@ -247,6 +261,18 @@ function updateGameArea() {
     myScore.update();
     myGamePiece.newPos();
     myGamePiece.update();
+    scrollGround();
+}
+
+function scrollGround() {
+    this.floor_height = imageRepository.ground.height - 50;
+    ctx = myGameArea.context;
+    if (myGameArea.ground_movement < -canvas_width) {
+        myGameArea.ground_movement = 0;
+    }
+    ctx.drawImage(imageRepository.ground, myGameArea.ground_movement, canvas_height - this.floor_height, canvas_width, imageRepository.ground.height);
+    ctx.drawImage(imageRepository.ground, myGameArea.ground_movement + canvas_width, canvas_height - this.floor_height, canvas_width, imageRepository.ground.height);
+    myGameArea.ground_movement -= obstacleSpeed;
 }
 
 function everyinterval(n) {
