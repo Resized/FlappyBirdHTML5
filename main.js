@@ -27,6 +27,7 @@ function restartGame() {
 var myGameArea = {
     canvas: document.createElement("canvas"),
     start: function () {
+        this.gamePieceImg = document.getElementById("flappy");
         this.canvas.width = canvas_width;
         this.canvas.height = canvas_height;
         this.context = this.canvas.getContext("2d");
@@ -66,7 +67,9 @@ function component(width, height, color, x, y, type) {
                 break;
             case "game_piece":
                 ctx.fillStyle = color;
-                this.drawRectRot(this.x, this.y, this.width, this.height, this.gravitySpeed * 5);
+                this.drawImgRot(myGameArea.gamePieceImg, this.x, this.y, this.width, this.height, this.gravitySpeed * 5);
+                //ctx.drawImage(myGameArea.gamePieceImg, 10, 10);
+                //this.drawRectRot(this.x, this.y, this.width, this.height, this.gravitySpeed * 5);
                 break;
             case "obstacle_top":
             case "obstacle_bottom":
@@ -99,6 +102,21 @@ function component(width, height, color, x, y, type) {
         }
 
     }
+    this.drawImgRot = function (img, x, y, width, height, deg) {
+        // Store the current context state (i.e. rotation, translation etc..)
+        ctx.save()
+        //Convert degrees to radian 
+        var rad = deg * Math.PI / 180;
+        //Set the origin to the center of the image
+        ctx.translate(x + width / 2, y + height / 2);
+        //Rotate the canvas around the origin
+        ctx.rotate(rad);
+        //draw the image    
+        ctx.drawImage(img, width / 2 * (-1), height / 2 * (-1), width, height);
+        // Restore canvas state as saved from above
+        ctx.restore();
+    }
+
     this.drawRectRot = function (x, y, width, height, deg) {
         // Store the current context state (i.e. rotation, translation etc..)
         ctx.save()
