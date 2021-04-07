@@ -7,11 +7,19 @@
 </head>
 
 <body onload="startGame()">
-    <script src="main.js"></script>
-    <br>
-    <p>Press 'Space' to flap wings</p>
-    <p id="Highscore">Highscore: 0</p>
-    <img id="flappy" src="pngegg.png" style="display: none;" />
+    <canvas id="background_canvas" width="640" height="480">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <canvas id="game_canvas" width="640" height="480">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+
+    <div>
+        <script src="main.js"></script>
+        <br>
+        <p>Press 'Space' to flap wings</p>
+        <p id="Highscore">Highscore: 0</p>
+    </div>
 </body>
 
 </html>
