@@ -40,6 +40,7 @@ var imageRepository = new function () {
 var myGameArea = {
     canvas: document.getElementById("game_canvas"),
     start: function () {
+        this.canvas.addEventListener("touchstart", handleStart, false);
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.frameNo = 0;
@@ -49,6 +50,10 @@ var myGameArea = {
     clear: function () {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
+}
+
+function handleStart(evt) {
+    flap();
 }
 
 var myBackground = {
