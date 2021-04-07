@@ -7,6 +7,7 @@ var canvas_height = 480;
 var obstacleSpeed = 1;
 var obstacleDistance = 0;
 var flap_audio = new Audio('sounds/sfx_wing.mp3');
+var colors = ["Gold", "Green", "Magenta", "Turquoise", "DarkBlue", "Brown", "MistyRose", "HotPink", "Crimson"]
 
 
 function startGame() {
@@ -35,6 +36,9 @@ var imageRepository = new function () {
     this.gamePieceImg.src = "images/flappy.png";
     this.ground = new Image();
     this.ground.src = "images/ground.png";
+    this.clouds = new Image();
+    this.clouds.src = "images/clouds.png";
+
 }
 
 var myGameArea = {
@@ -46,6 +50,17 @@ var myGameArea = {
         this.frameNo = 0;
         this.ground_movement = 0;
         this.interval = setInterval(updateGameArea, 20);
+        window.addEventListener('keydown', function (e) {
+            e.preventDefault();
+            myGameArea.keys = (myGameArea.keys || []);
+            myGameArea.keys[e.code] = (e.type == "keydown");
+        })
+        window.addEventListener('keyup', function (e) {
+            myGameArea.keys[e.code] = (e.type == "keydown");
+        })
+    },
+    stop: function () {
+        clearInterval(this.interval);
     },
     clear: function () {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -59,23 +74,23 @@ function handleStart(evt) {
 var myBackground = {
     canvas: document.getElementById("background_canvas"),
     start: function () {
-        this.imgWidth = 0;
+        this.scrollIndex = 0;
         this.context = this.canvas.getContext("2d");
-        this.context.drawImage(imageRepository.background, 0, 0);
         this.interval = setInterval(scrollBackground, 20);
     },
     scroll: function () {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.drawImage(imageRepository.background, -this.imgWidth, 0);
-        this.context.drawImage(imageRepository.background, -this.imgWidth + imageRepository.background.width, 0);
+        this.context.drawImage(imageRepository.background, -this.scrollIndex, -50);
+        this.context.drawImage(imageRepository.background, -this.scrollIndex + imageRepository.background.width, -50);
+        this.context.drawImage(imageRepository.clouds, this.canvas.width - this.scrollIndex * 1.5, 40);
     }
 }
 
 function scrollBackground() {
-    if (myBackground.imgWidth > imageRepository.background.width) {
-        myBackground.imgWidth = 0;
+    if (myBackground.scrollIndex > imageRepository.background.width) {
+        myBackground.scrollIndex = 0;
     }
-    myBackground.imgWidth += 0.5;
+    myBackground.scrollIndex += 0.5;
     myBackground.scroll();
 }
 
@@ -111,8 +126,12 @@ function component(width, height, color, x, y, type) {
                 break;
             case "obstacle_top":
             case "obstacle_bottom":
-                ctx.fillStyle = "black";
-                ctx.fillRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+                var outline_color = "#20161B";
+                var line_thickness = 2;
+                var lip_width = 4;
+                var lip_height = 15;
+                ctx.fillStyle = outline_color;
+                ctx.fillRect(this.x - line_thickness, this.y - line_thickness, this.width + line_thickness * 2, this.height + line_thickness * 2);
                 var my_gradient = ctx.createLinearGradient(this.x - 20, this.y, this.x + this.width + 10, this.y);
                 my_gradient.addColorStop(0, "black");
                 my_gradient.addColorStop(0.5, color);
@@ -125,22 +144,22 @@ function component(width, height, color, x, y, type) {
                 my_gradient.addColorStop(1, "white");
                 ctx.fillStyle = my_gradient;
                 if (this.type == "obstacle_top") {
-                    ctx.fillStyle = "black";
-                    ctx.fillRect(this.x - 7, this.y + this.height - 12, this.width + 14, 14);
+                    ctx.fillStyle = outline_color;
+                    ctx.fillRect(this.x - lip_width - line_thickness, this.y + this.height - lip_height - line_thickness, this.width + lip_width * 2 + line_thickness * 2, lip_height + line_thickness * 2);
                     ctx.fillStyle = my_gradient;
 
-                    ctx.fillRect(this.x - 5, this.y + this.height - 10, this.width + 10, 10);
+                    ctx.fillRect(this.x - lip_width, this.y + this.height - lip_height, this.width + lip_width * 2, lip_height);
                     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                    ctx.fillRect(this.x - 5, this.y + this.height - 10, this.width + 10, 3);
+                    ctx.fillRect(this.x - lip_width, this.y + this.height - lip_height, this.width + lip_width * 2, 3);
 
                 } else if (this.type == "obstacle_bottom") {
-                    ctx.fillStyle = "black";
-                    ctx.fillRect(this.x - 7, this.y - 2, this.width + 14, 14);
+                    ctx.fillStyle = outline_color;
+                    ctx.fillRect(this.x - lip_width - line_thickness, this.y - line_thickness, this.width + lip_width * 2 + line_thickness * 2, lip_height + line_thickness * 2);
                     ctx.fillStyle = my_gradient;
 
-                    ctx.fillRect(this.x - 5, this.y, this.width + 10, 10);
+                    ctx.fillRect(this.x - lip_width, this.y, this.width + lip_width * 2, lip_height);
                     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                    ctx.fillRect(this.x - 5, this.y, this.width + 10, 3);
+                    ctx.fillRect(this.x - lip_width, this.y, this.width + lip_width * 2, 3);
                 }
                 break;
 
@@ -217,9 +236,8 @@ function saveHighscore() {
 }
 
 function updateGameArea() {
-    var x, height, gap, minHeight, maxHeight, minGap, maxGap;
+    var x, height, gap, minHeight, maxHeight, minGap, maxGap, maxGapDifference, randomColor;
     var obstacleWidth = 40;
-    var ground_movement;
     for (i = 0; i < myObstacles.length; i += 1) {
         if (myGamePiece.crashWith(myObstacles[i])) {
             saveHighscore();
@@ -231,29 +249,13 @@ function updateGameArea() {
     obstacleDistance += obstacleSpeed;
 
     if (myGameArea.frameNo == 1) {
-        x = myGameArea.canvas.width;
-        minHeight = 20;
-        maxHeight = 200;
-        height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
-        minGap = 60;
-        maxGap = 120;
-        gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
-        myObstacles.push(new component(obstacleWidth, height, "green", x, 0, "obstacle_top"));
-        myObstacles.push(new component(obstacleWidth, x - height - gap, "green", x, height + gap, "obstacle_bottom"));
+        drawObstacle();
     } else if (everyinterval(150)) {
         obstacleSpeed += 0.1;
     }
 
     if (obstacleDistance > 150) {
-        x = myGameArea.canvas.width;
-        minHeight = 20;
-        maxHeight = 200;
-        height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
-        minGap = 60;
-        maxGap = 120;
-        gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
-        myObstacles.push(new component(obstacleWidth, height, "green", x, 0, "obstacle_top"));
-        myObstacles.push(new component(obstacleWidth, x - height - gap, "green", x, height + gap, "obstacle_bottom"));
+        drawObstacle();
         if (myObstacles.length > 10) {
             myObstacles.shift();
             myObstacles.shift();
@@ -269,8 +271,32 @@ function updateGameArea() {
     myScore.update();
     myGamePiece.newPos();
     myGamePiece.update();
+    if (myGameArea.keys && myGameArea.keys['Space']) {
+        flap();
+    }
     scrollGround();
+
+    function drawObstacle() {
+        x = myGameArea.canvas.width;
+        minHeight = 20;
+        maxHeight = 250;
+        maxGapDifference = 150;
+        if (myObstacles.length > 0) {
+            height = Math.min(Math.max(Math.floor(Math.random() * (maxGapDifference + 1) - maxGapDifference / 2 + myObstacles[myObstacles.length - 2].height), minHeight), maxHeight);
+        } else {
+            height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+        }
+        minGap = 80;
+        maxGap = 120;
+        gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
+        randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
+        myObstacles.push(new component(obstacleWidth, height, randomColor, x, 0, "obstacle_top"));
+        myObstacles.push(new component(obstacleWidth, x - height - gap, randomColor, x, height + gap, "obstacle_bottom"));
+    }
+
 }
+
+
 
 function scrollGround() {
     this.floor_height = imageRepository.ground.height - 50;
@@ -292,13 +318,5 @@ function everyinterval(n) {
 
 function flap() {
     flap_audio.play();
-    myGamePiece.gravitySpeed = -3.2;
-}
-
-window.addEventListener('keydown', this.check, false);
-
-function check(e) {
-    if (e.code == 'Space') {
-        flap();
-    }
+    myGamePiece.gravitySpeed = -3.3;
 }
