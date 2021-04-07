@@ -41,7 +41,6 @@ var myGameArea = {
 
 function component(width, height, color, x, y, type) {
     this.type = type;
-    console.log(type);
     this.score = 0;
     this.width = width;
     this.height = height;
@@ -51,7 +50,7 @@ function component(width, height, color, x, y, type) {
     this.y = y;
     this.gravity = 0;
     this.gravitySpeed = 0;
-    this.rotation_angle = 5;
+    this.rotation_angle = 30;
 
     this.update = function () {
         ctx = myGameArea.context;
@@ -67,8 +66,7 @@ function component(width, height, color, x, y, type) {
                 break;
             case "game_piece":
                 ctx.fillStyle = color;
-                //ctx.rotate(this.rotation_angle * Math.PI / 180);
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                this.drawRectRot(this.x, this.y, this.width, this.height, this.gravitySpeed * 5);
                 break;
             case "obstacle_top":
             case "obstacle_bottom":
@@ -101,11 +99,26 @@ function component(width, height, color, x, y, type) {
         }
 
     }
+    this.drawRectRot = function (x, y, width, height, deg) {
+        // Store the current context state (i.e. rotation, translation etc..)
+        ctx.save()
+        //Convert degrees to radian 
+        var rad = deg * Math.PI / 180;
+        //Set the origin to the center of the image
+        ctx.translate(x + width / 2, y + height / 2);
+        //Rotate the canvas around the origin
+        ctx.rotate(rad);
+        //draw the image    
+        ctx.fillRect(width / 2 * (-1), height / 2 * (-1), width, height);
+        // Restore canvas state as saved from above
+        ctx.restore();
+    }
+
     this.newPos = function () {
         this.gravitySpeed += this.gravity;
         this.x += this.speedX;
         this.y += this.speedY + this.gravitySpeed;
-        this.hitBottom();
+        this.hitBottomTop();
     }
     this.resetPos = function () {
         this.x = x;
@@ -113,11 +126,14 @@ function component(width, height, color, x, y, type) {
         this.gravity = 0;
         this.gravitySpeed = 0;
     }
-    this.hitBottom = function () {
+    this.hitBottomTop = function () {
         var rockbottom = myGameArea.canvas.height - this.height;
         if (this.y > rockbottom) {
             this.y = rockbottom;
             this.gravitySpeed = 0;
+        }
+        if (this.y < 0) {
+            this.y = 0;
         }
     }
     this.crashWith = function (otherobj) {
@@ -146,6 +162,7 @@ function saveHighscore() {
 }
 
 function updateGameArea() {
+    console.log(myGamePiece.speedX);
     var x, height, gap, minHeight, maxHeight, minGap, maxGap;
     var obstacleWidth = 40;
     for (i = 0; i < myObstacles.length; i += 1) {
