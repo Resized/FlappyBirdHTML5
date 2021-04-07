@@ -6,8 +6,11 @@ var canvas_width = 640;
 var canvas_height = 480;
 var obstacleSpeed = 1;
 var obstacleDistance = 0;
+var flap_audio = new Audio('sounds/sfx_wing.mp3');
+
 
 function startGame() {
+    flap_audio.volume = 0.1;
     myGamePiece = new component(20, 20, "red", 10, 120, "game_piece");
     myGamePiece.gravity = 0.15;
     myScore = new component("30px", "Consolas", "black", canvas_width / 2, 40, "text");
@@ -283,6 +286,7 @@ function everyinterval(n) {
 }
 
 function flap() {
+    flap_audio.play();
     myGamePiece.gravitySpeed = -3.2;
 }
 

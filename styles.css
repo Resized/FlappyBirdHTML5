@@ -1,22 +1,25 @@
 #background_canvas,
 #game_canvas {
-    border: 1px solid #d3d3d3;
-    padding-left: 0;
-    padding-right: 0;
+    border: 1px solid #444444;
     margin-left: auto;
     margin-right: auto;
-    position: relative;
+    position: absolute;
+    display: block;
+    z-index: -1;
+    top: 8px;
+    bottom: 0;
+    left: 0;
+    right: 0;
 
 }
 
 #game_canvas {
     position: absolute;
     z-index: 0;
-
-}
-
-#background_canvas {
-    z-index: -1;
+    top: 8px;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }
 
 #gamediv {
@@ -33,4 +36,9 @@ p {
     font-family: 'Consolas';
     font-weight: bold;
     font-size: 2em;
+}
+
+#text {
+    position: relative;
+    top: 500px;
 }
