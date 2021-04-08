@@ -53,6 +53,7 @@ function gameOver() {
 }
 
 function restartGame() {
+    toUpdateScore = true;
     obstacleSpeed = initialObstacleSpeed;
     myScore = 0;
     obstacleDistance = 0;
@@ -329,7 +330,6 @@ function updateGameArea() {
         toUpdateScore = false;
         myScore++;
     }
-    //myScore = myGameArea.frameNo;
     drawScore();
     myGamePiece.newPos();
     myGamePiece.update();
@@ -363,7 +363,6 @@ function drawScore() {
     ctx = myGameArea.context;
     ctx.font = "42px Impact";
     ctx.textAlign = "center";
-    //ctx.font = this.width + " " + this.height;
     ctx.fillStyle = '#ffffff';
     ctx.lineWidth = 6;
     ctx.strokeText(myScore, canvas_width / 2, 80);
