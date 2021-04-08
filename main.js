@@ -283,20 +283,11 @@ function component(width, height, color, x, y, type) {
     }
 }
 
-function initHighscore() {
-    if (typeof (Storage) !== "undefined") {
-        if (localStorage.highscore) {
-            highscore = localStorage.highscore;
-        }
-    }
-}
-
 function saveHighscore() {
     if (typeof (Storage) !== "undefined") {
         if (localStorage.highscore) {
             if (myScore > localStorage.highscore) {
                 localStorage.highscore = myScore;
-                document.getElementById("Highscore").innerHTML = "Highscore: " + localStorage.highscore;
             }
         } else {
             localStorage.highscore = myScore;
