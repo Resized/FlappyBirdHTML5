@@ -36,10 +36,10 @@ function gameOver() {
     ctx.fillStyle = '#000000';
     ctx.lineWidth = 10;
     ctx.strokeText(myScore, 235, 290);
-    ctx.strokeText(highscore, 410, 290);
+    ctx.strokeText(localStorage.highscore, 410, 290);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(myScore, 235, 290);
-    ctx.fillText(highscore, 410, 290);
+    ctx.fillText(localStorage.highscore, 410, 290);
     myGameArea.stop();
     myBackground.stop();
     document.body.appendChild(canvas);
@@ -283,10 +283,24 @@ function component(width, height, color, x, y, type) {
     }
 }
 
+function initHighscore() {
+    if (typeof (Storage) !== "undefined") {
+        if (localStorage.highscore) {
+            highscore = localStorage.highscore;
+        }
+    }
+}
+
 function saveHighscore() {
-    if (myScore > highscore) {
-        highscore = myScore;
-        document.getElementById("Highscore").innerHTML = "Highscore: " + highscore;
+    if (typeof (Storage) !== "undefined") {
+        if (localStorage.highscore) {
+            if (myScore > localStorage.highscore) {
+                localStorage.highscore = myScore;
+                document.getElementById("Highscore").innerHTML = "Highscore: " + localStorage.highscore;
+            }
+        } else {
+            localStorage.highscore = myScore;
+        }
     }
 }
 
