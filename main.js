@@ -1,32 +1,67 @@
+const gravity_value = 0.4;
+const initialObstacleSpeed = 3;
+const flap_speed = 6;
 var myGamePiece;
 var myObstacles = [];
-var myScore;
+var myScore = 0;
 var highscore = 0;
 var canvas_width = 640;
 var canvas_height = 480;
-var obstacleSpeed = 1;
+var obstacleSpeed = initialObstacleSpeed;
 var obstacleDistance = 0;
-var flap_audio = new Audio('sounds/sfx_wing.mp3');
+var toUpdateScore = true;
+
 var colors = ["Gold", "Green", "Magenta", "Turquoise", "DarkBlue", "Brown", "MistyRose", "HotPink", "Crimson"]
 
-
 function startGame() {
-    flap_audio.volume = 0.1;
     myGamePiece = new component(20, 20, "red", 10, 120, "game_piece");
-    myGamePiece.gravity = 0.15;
-    myScore = new component("30px", "Consolas", "black", canvas_width / 2, 40, "text");
+    myGamePiece.gravity = gravity_value;
     myBackground.start();
     myGameArea.start();
 }
 
+function gameOver() {
+    soundsRepository.hit_audio.play();
+    soundsRepository.die_audio.play();
+    canvas = document.createElement('canvas')
+    ctx = canvas.getContext('2d');
+    canvas.id = "GameOverLayer";
+    canvas.width = 640;
+    canvas.height = 480;
+    canvas.style.zIndex = 1
+    saveHighscore();
+    ctx.drawImage(imageRepository.gameOverImg, 0, 0);
+    ctx.font = "68px Impact";
+    ctx.textAlign = "center";
+    ctx.fillStyle = '#000000';
+    ctx.lineWidth = 10;
+    ctx.strokeText(myScore, 235, 290);
+    ctx.strokeText(highscore, 410, 290);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(myScore, 235, 290);
+    ctx.fillText(highscore, 410, 290);
+    myGameArea.stop();
+    myBackground.stop();
+    document.body.appendChild(canvas);
+
+    canvas.addEventListener('click', e => {
+        if (e.offsetX >= 240 && e.offsetX <= 400 && e.offsetY >= 386 && e.offsetY <= 443) {
+            document.body.removeChild(canvas);
+            restartGame();
+        }
+    });
+}
+
 function restartGame() {
-    obstacleSpeed = 1;
+    obstacleSpeed = initialObstacleSpeed;
+    myScore = 0;
     obstacleDistance = 0;
-    myGameArea.clear();
     myGameArea.frameNo = 0;
     myGamePiece.resetPos();
-    myGamePiece.gravity = 0.15;
+    myGamePiece.gravity = gravity_value;
     myObstacles = [];
+    myGameArea.restart();
+    myBackground.restart();
 }
 
 var imageRepository = new function () {
@@ -38,7 +73,22 @@ var imageRepository = new function () {
     this.ground.src = "images/ground.png";
     this.clouds = new Image();
     this.clouds.src = "images/clouds.png";
+    this.gameOverImg = new Image();
+    this.gameOverImg.src = "images/gameover.png";
 
+}
+
+var soundsRepository = new function () {
+    this.flap_audio = new Audio('sounds/sfx_wing.wav');
+    this.flap_audio.volume = 0.1;
+    this.die_audio = new Audio('sounds/sfx_die.wav');
+    this.die_audio.volume = 0.1;
+    this.hit_audio = new Audio('sounds/sfx_hit.wav');
+    this.hit_audio.volume = 0.1;
+    this.point_audio = new Audio('sounds/sfx_point.wav');
+    this.point_audio.volume = 0.1;
+    this.swooshing_audio = new Audio('sounds/sfx_swooshing.wav');
+    this.swooshing_audio.volume = 0.1;
 }
 
 var myGameArea = {
@@ -59,6 +109,9 @@ var myGameArea = {
             myGameArea.keys[e.code] = (e.type == "keydown");
         })
     },
+    restart: function () {
+        this.interval = setInterval(updateGameArea, 20);
+    },
     stop: function () {
         clearInterval(this.interval);
     },
@@ -78,12 +131,23 @@ var myBackground = {
         this.context = this.canvas.getContext("2d");
         this.interval = setInterval(scrollBackground, 20);
     },
+    restart: function () {
+        this.interval = setInterval(scrollBackground, 20);
+
+    },
+    stop: function () {
+        clearInterval(this.interval);
+    },
     scroll: function () {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.clear();
         this.context.drawImage(imageRepository.background, -this.scrollIndex, -50);
         this.context.drawImage(imageRepository.background, -this.scrollIndex + imageRepository.background.width, -50);
         this.context.drawImage(imageRepository.clouds, this.canvas.width - this.scrollIndex * 1.5, 40);
+    },
+    clear: function () {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
+
 }
 
 function scrollBackground() {
@@ -111,15 +175,6 @@ function component(width, height, color, x, y, type) {
         ctx = myGameArea.context;
 
         switch (this.type) {
-            case "text":
-                ctx.textAlign = "center";
-                ctx.font = this.width + " " + this.height;
-                ctx.fillStyle = color;
-                ctx.lineWidth = 4;
-                ctx.strokeText(this.text, this.x, this.y);
-                ctx.fillStyle = 'white';
-                ctx.fillText(this.text, this.x, this.y);
-                break;
             case "game_piece":
                 ctx.fillStyle = color;
                 this.drawImgRot(imageRepository.gamePieceImg, this.x - 5, this.y - 5, this.width + 10, this.height + 10, this.gravitySpeed * 5);
@@ -203,8 +258,7 @@ function component(width, height, color, x, y, type) {
     this.hitBottomTop = function () {
         var rockbottom = myGameArea.canvas.height - this.height - (imageRepository.ground.height - 50);
         if (this.y > rockbottom) {
-            saveHighscore();
-            restartGame();
+            gameOver();
         }
         if (this.y < 0) {
             this.y = 0;
@@ -229,19 +283,19 @@ function component(width, height, color, x, y, type) {
 }
 
 function saveHighscore() {
-    if (myGameArea.frameNo > highscore) {
-        highscore = myGameArea.frameNo;
+    if (myScore > highscore) {
+        highscore = myScore;
         document.getElementById("Highscore").innerHTML = "Highscore: " + highscore;
     }
 }
+
 
 function updateGameArea() {
     var x, height, gap, minHeight, maxHeight, minGap, maxGap, maxGapDifference, randomColor;
     var obstacleWidth = 40;
     for (i = 0; i < myObstacles.length; i += 1) {
         if (myGamePiece.crashWith(myObstacles[i])) {
-            saveHighscore();
-            restartGame();
+            gameOver();
         }
     }
     myGameArea.clear();
@@ -256,7 +310,8 @@ function updateGameArea() {
 
     if (obstacleDistance > 150) {
         drawObstacle();
-        if (myObstacles.length > 10) {
+        if (myObstacles[0].x < 0) {
+            toUpdateScore = true;
             myObstacles.shift();
             myObstacles.shift();
         }
@@ -267,12 +322,20 @@ function updateGameArea() {
         myObstacles[i].x -= obstacleSpeed;
         myObstacles[i].update();
     }
-    myScore.text = "SCORE: " + myGameArea.frameNo;
-    myScore.update();
+    if (myObstacles[0].x <= myGamePiece.x && toUpdateScore) {
+        var point = new Audio('sounds/sfx_point.wav');
+        point.volume = 0.1;
+        point.play();
+        toUpdateScore = false;
+        myScore++;
+    }
+    //myScore = myGameArea.frameNo;
+    drawScore();
     myGamePiece.newPos();
     myGamePiece.update();
     if (myGameArea.keys && myGameArea.keys['Space']) {
         flap();
+        myGameArea.keys['Space'] = false;
     }
     scrollGround();
 
@@ -296,7 +359,17 @@ function updateGameArea() {
 
 }
 
-
+function drawScore() {
+    ctx = myGameArea.context;
+    ctx.font = "42px Impact";
+    ctx.textAlign = "center";
+    //ctx.font = this.width + " " + this.height;
+    ctx.fillStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.strokeText(myScore, canvas_width / 2, 80);
+    ctx.fillStyle = 'white';
+    ctx.fillText(myScore, canvas_width / 2, 80);
+}
 
 function scrollGround() {
     this.floor_height = imageRepository.ground.height - 50;
@@ -317,6 +390,9 @@ function everyinterval(n) {
 }
 
 function flap() {
-    flap_audio.play();
-    myGamePiece.gravitySpeed = -3.3;
+    var flap_sound = new Audio('sounds/sfx_wing.wav');
+    flap_sound.volume = 0.1;
+    flap_sound.play();
+    myGamePiece.gravitySpeed = -flap_speed;
+
 }
