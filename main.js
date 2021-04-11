@@ -8,21 +8,93 @@ var highscore = 0;
 var canvas_width = 640;
 var canvas_height = 480;
 var obstacleSpeed = initialObstacleSpeed;
+var obstacleRiseSpeed = 0.2;
 var obstacleDistance = 0;
 var toUpdateScore = true;
+var flapIndex = 0;
+var globalVolume = 0.1;
+var difficulty = {
+    'Easy': 0,
+    'Medium': 1,
+    'Hard': 2
+}
+var gameState = {
+    currentState: 1,
+    introState: 0,
+    inGameState: 1,
+    gameOverState: 2
+}
 
-var colors = ["Gold", "Green", "Magenta", "Turquoise", "DarkBlue", "Brown", "MistyRose", "HotPink", "Crimson"]
+var pipeColors = ["Gold", "Green", "Magenta", "Turquoise", "DarkBlue", "Brown", "MistyRose", "HotPink", "Crimson"]
 
 function startGame() {
-    myGamePiece = new component(20, 20, "red", 10, 120, "game_piece");
+    myGamePiece = new component(20, 20, "red", 50, 120, "game_piece");
     myGamePiece.gravity = gravity_value;
+    myGamePiece.interval = setInterval(flapAnimation, 200);
     myBackground.start();
     myGameArea.start();
+    settingsScreen();
+    splashScreen();
+}
+
+function flapAnimation() {
+    if (gameState.currentState != gameState.gameOverState) {
+        flapIndex = (flapIndex + 1) % 3;
+    }
+}
+
+function settingsScreen() {
+    let imgOffsetX = 20;
+    let imgOffsetY = 20;
+
+    settingsCanvas = document.getElementById('settings_canvas');
+    settingsCtx = settingsCanvas.getContext('2d');
+    settingsCanvas.width = 640;
+    settingsCanvas.height = 480;
+    settingsCanvas.style.zIndex = 1;
+
+    if (globalVolume != 0) {
+        settingsCtx.drawImage(imageRepository.volUpImg, canvas_width - imageRepository.volUpImg.width - imgOffsetX, imgOffsetY);
+    } else
+        settingsCtx.drawImage(imageRepository.volDownImg, canvas_width - imageRepository.volDownImg.width - imgOffsetX, imgOffsetY);
+
+    window.addEventListener('click', e => {
+        if (e.offsetX >= canvas_width - imageRepository.volUpImg.width - imgOffsetX && e.offsetX <= canvas_width - imgOffsetX && e.offsetY >= imgOffsetY && e.offsetY <= imgOffsetY + imageRepository.volUpImg.height) {
+            globalVolume = globalVolume == 0.1 ? 0 : 0.1;
+            if (globalVolume != 0) {
+                settingsCtx.drawImage(imageRepository.volUpImg, canvas_width - imageRepository.volUpImg.width - imgOffsetX, imgOffsetY);
+            } else
+                settingsCtx.drawImage(imageRepository.volDownImg, canvas_width - imageRepository.volDownImg.width - imgOffsetX, imgOffsetY);
+
+        }
+    });
+
+}
+
+function splashScreen() {
+    gameState.currentState = gameState.introState;
+    splashCanvas = document.getElementById('splash_canvas');
+    splashCtx = splashCanvas.getContext('2d');
+    splashCanvas.width = 640;
+    splashCanvas.height = 480;
+    splashCanvas.style.zIndex = 2;
+    splashCtx.drawImage(imageRepository.splashScreenImg, 0, 0);
+    document.body.appendChild(splashCanvas);
+
+    window.addEventListener('keydown', e => {
+        if (e.code == 'Space') {
+            gameState.currentState = gameState.inGameState;
+            document.body.removeChild(splashCanvas);
+        }
+    }, {
+        once: true
+    });
 }
 
 function gameOver() {
-    soundsRepository.hit_audio.play();
-    soundsRepository.die_audio.play();
+    gameState.currentState = gameState.gameOverState;
+    audio_play(soundsRepository.hit_audio);
+    setTimeout(() => audio_play(soundsRepository.die_audio), canvas_height - myGamePiece.y);
     canvas = document.createElement('canvas')
     ctx = canvas.getContext('2d');
     canvas.id = "GameOverLayer";
@@ -40,8 +112,6 @@ function gameOver() {
     ctx.fillStyle = '#ffffff';
     ctx.fillText(myScore, 235, 290);
     ctx.fillText(localStorage.highscore, 410, 290);
-    myGameArea.stop();
-    myBackground.stop();
     document.body.appendChild(canvas);
 
     canvas.addEventListener('click', e => {
@@ -61,41 +131,55 @@ function restartGame() {
     myGamePiece.resetPos();
     myGamePiece.gravity = gravity_value;
     myObstacles = [];
-    myGameArea.restart();
-    myBackground.restart();
+    gameState.currentState = gameState.inGameState;
 }
 
 var imageRepository = new function () {
     this.background = new Image();
     this.background.src = "images/background.png";
-    this.gamePieceImg = new Image();
-    this.gamePieceImg.src = "images/flappy.png";
+    this.gamePieceImg1 = new Image();
+    this.gamePieceImg1.src = "images/flap1.png";
+    this.gamePieceImg2 = new Image();
+    this.gamePieceImg2.src = "images/flap2.png";
+    this.gamePieceImg3 = new Image();
+    this.gamePieceImg3.src = "images/flap3.png";
+    this.gamePieceImg = [this.gamePieceImg1, this.gamePieceImg2, this.gamePieceImg3]
     this.ground = new Image();
     this.ground.src = "images/ground.png";
     this.clouds = new Image();
     this.clouds.src = "images/clouds.png";
     this.gameOverImg = new Image();
     this.gameOverImg.src = "images/gameover.png";
-
+    this.splashScreenImg = new Image();
+    this.splashScreenImg.src = "images/splash.png";
+    this.volDownImg = new Image();
+    this.volDownImg.src = "images/voldown.png";
+    this.volUpImg = new Image();
+    this.volUpImg.src = "images/volup.png";
 }
 
 var soundsRepository = new function () {
     this.flap_audio = new Audio('sounds/sfx_wing.wav');
-    this.flap_audio.volume = 0.1;
+    this.flap_audio.volume = globalVolume;
     this.die_audio = new Audio('sounds/sfx_die.wav');
-    this.die_audio.volume = 0.1;
+    this.die_audio.volume = globalVolume;
     this.hit_audio = new Audio('sounds/sfx_hit.wav');
-    this.hit_audio.volume = 0.1;
+    this.hit_audio.volume = globalVolume;
     this.point_audio = new Audio('sounds/sfx_point.wav');
-    this.point_audio.volume = 0.1;
+    this.point_audio.volume = globalVolume;
     this.swooshing_audio = new Audio('sounds/sfx_swooshing.wav');
-    this.swooshing_audio.volume = 0.1;
+    this.swooshing_audio.volume = globalVolume;
+}
+
+function audio_play(sound_clip) {
+    sound_clip.volume = globalVolume;
+    sound_clip.play();
 }
 
 var myGameArea = {
     canvas: document.getElementById("game_canvas"),
     start: function () {
-        this.canvas.addEventListener("touchstart", handleStart, false);
+        this.canvas.addEventListener("touchstart", () => flap(), false);
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.frameNo = 0;
@@ -148,18 +232,26 @@ var myBackground = {
     clear: function () {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
-
 }
 
 function scrollBackground() {
     if (myBackground.scrollIndex > imageRepository.background.width) {
         myBackground.scrollIndex = 0;
     }
-    myBackground.scrollIndex += 0.5;
+    if (gameState.currentState != gameState.gameOverState) {
+
+        myBackground.scrollIndex += 0.5;
+    }
     myBackground.scroll();
 }
 
-function component(width, height, color, x, y, type) {
+class component2 {
+    constructor(width, height, color, x, y, type) {
+
+    }
+}
+
+function component(width, height, color, x, y, type, isGoingUp = 1) {
     this.type = type;
     this.score = 0;
     this.width = width;
@@ -171,6 +263,7 @@ function component(width, height, color, x, y, type) {
     this.gravity = 0;
     this.gravitySpeed = 0;
     this.rotation_angle = 30;
+    this.isGoingUp = isGoingUp;
 
     this.update = function () {
         ctx = myGameArea.context;
@@ -178,7 +271,7 @@ function component(width, height, color, x, y, type) {
         switch (this.type) {
             case "game_piece":
                 ctx.fillStyle = color;
-                this.drawImgRot(imageRepository.gamePieceImg, this.x - 5, this.y - 5, this.width + 10, this.height + 10, this.gravitySpeed * 5);
+                this.drawImgRot(imageRepository.gamePieceImg[flapIndex], this.x - 15, this.y - 15, this.width + 30, this.height + 30, this.gravitySpeed * 5);
                 break;
             case "obstacle_top":
             case "obstacle_bottom":
@@ -297,60 +390,115 @@ function saveHighscore() {
 
 
 function updateGameArea() {
-    var x, height, gap, minHeight, maxHeight, minGap, maxGap, maxGapDifference, randomColor;
+    var x, height, gap, minHeight, maxHeight, minGap, maxGap, maxGapDifference, randomColor, bufferSize;
     var obstacleWidth = 40;
-    for (i = 0; i < myObstacles.length; i += 1) {
-        if (myGamePiece.crashWith(myObstacles[i])) {
-            gameOver();
-        }
-    }
-    myGameArea.clear();
-    myGameArea.frameNo += 1;
-    obstacleDistance += obstacleSpeed;
+    bufferSize = 300;
+    minHeight = 20;
+    maxHeight = 250;
+    maxGapDifference = 150;
 
-    if (myGameArea.frameNo == 1) {
-        drawObstacle();
-    } else if (everyinterval(150)) {
-        obstacleSpeed += 0.1;
+    switch (gameState.currentState) {
+        case gameState.introState:
+            myGameArea.clear();
+            for (i = 0; i < myObstacles.length; i += 1) {
+                myObstacles[i].update();
+            }
+            scrollGround();
+
+            myGamePiece.update();
+            break;
+
+        case gameState.inGameState:
+            for (i = 0; i < myObstacles.length; i += 1) {
+                if (myGamePiece.crashWith(myObstacles[i])) {
+                    gameOver();
+                }
+            }
+            myGameArea.clear();
+            myGameArea.frameNo += 1;
+            obstacleDistance += obstacleSpeed;
+
+            if (myGameArea.frameNo == 1) {
+                drawObstacle();
+            } else if (everyinterval(150)) {
+                obstacleSpeed += 0.1;
+            }
+
+            if (obstacleDistance > 150) {
+                drawObstacle();
+                if (myObstacles[0].x + myObstacles[0].width < myGamePiece.x) {
+                    toUpdateScore = true;
+                }
+                if (myObstacles[0].x < 0) {
+                    myObstacles.shift();
+                    myObstacles.shift();
+                }
+                obstacleDistance = 0;
+            }
+
+            for (i = 0; i < myObstacles.length; i += 2) {
+                if (myObstacles[i].y + myObstacles[i].height < 50 && myObstacles[i].isGoingUp == 1) {
+                    myObstacles[i].isGoingUp = -1;
+                    myObstacles[i + 1].isGoingUp = -1;
+                } else if (myObstacles[i + 1].y > 350 && myObstacles[i].isGoingUp == -1) {
+                    myObstacles[i].isGoingUp = 1;
+                    myObstacles[i + 1].isGoingUp = 1;
+                }
+            }
+
+            for (i = 0; i < myObstacles.length; i += 1) {
+                myObstacles[i].y += obstacleRiseSpeed * -myObstacles[i].isGoingUp;
+                myObstacles[i].x -= obstacleSpeed;
+                myObstacles[i].update();
+            }
+
+            if (myObstacles[0].x <= myGamePiece.x && toUpdateScore) {
+                let point = new Audio('sounds/sfx_point.wav');
+                point.volume = globalVolume;
+                point.play();
+                toUpdateScore = false;
+                myScore++;
+            }
+            drawScore();
+            myGamePiece.newPos();
+            myGamePiece.update();
+            if (myGameArea.keys && myGameArea.keys['Space']) {
+                flap();
+                myGameArea.keys['Space'] = false;
+            }
+            if (myGameArea.keys && myGameArea.keys['KeyM']) {
+                globalVolume = globalVolume == 0.1 ? 0 : 0.1;
+                myGameArea.keys['KeyM'] = false;
+            }
+            scrollGround();
+            break;
+        case gameState.gameOverState:
+            myGameArea.clear();
+            for (i = 0; i < myObstacles.length; i += 1) {
+                myObstacles[i].update();
+            }
+            scrollGround();
+
+            if (myGamePiece.y < myGameArea.canvas.height - (imageRepository.ground.height - 20)) {
+                myGamePiece.gravitySpeed += myGamePiece.gravity;
+                myGamePiece.x += myGamePiece.speedX;
+                myGamePiece.y += myGamePiece.speedY + myGamePiece.gravitySpeed;
+            }
+            myGamePiece.update();
+            break;
+        default:
+            break;
     }
 
-    if (obstacleDistance > 150) {
-        drawObstacle();
-        if (myObstacles[0].x < 0) {
-            toUpdateScore = true;
-            myObstacles.shift();
-            myObstacles.shift();
-        }
-        obstacleDistance = 0;
-    }
-
-    for (i = 0; i < myObstacles.length; i += 1) {
-        myObstacles[i].x -= obstacleSpeed;
-        myObstacles[i].update();
-    }
-    if (myObstacles[0].x <= myGamePiece.x && toUpdateScore) {
-        var point = new Audio('sounds/sfx_point.wav');
-        point.volume = 0.1;
-        point.play();
-        toUpdateScore = false;
-        myScore++;
-    }
-    drawScore();
-    myGamePiece.newPos();
-    myGamePiece.update();
-    if (myGameArea.keys && myGameArea.keys['Space']) {
-        flap();
-        myGameArea.keys['Space'] = false;
-    }
-    scrollGround();
 
     function drawObstacle() {
         x = myGameArea.canvas.width;
-        minHeight = 20;
-        maxHeight = 250;
-        maxGapDifference = 150;
+        let y = myGameArea.canvas.height;
         if (myObstacles.length > 0) {
-            height = Math.min(Math.max(Math.floor(Math.random() * (maxGapDifference + 1) - maxGapDifference / 2 + myObstacles[myObstacles.length - 2].height), minHeight), maxHeight);
+            let previous_height = myObstacles[myObstacles.length - 2].height - bufferSize;
+            let top_rand_height = Math.max(previous_height - maxGapDifference / 2, minHeight)
+            let bot_rand_height = Math.min(previous_height + maxGapDifference / 2, maxHeight)
+            height = Math.floor(Math.random() * (bot_rand_height - top_rand_height + 1) + top_rand_height);
         } else {
             height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
         }
@@ -358,10 +506,10 @@ function updateGameArea() {
         maxGap = 120;
         gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
         randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
-        myObstacles.push(new component(obstacleWidth, height, randomColor, x, 0, "obstacle_top"));
-        myObstacles.push(new component(obstacleWidth, x - height - gap, randomColor, x, height + gap, "obstacle_bottom"));
+        let isGoingUp = Math.random() > 0.5 ? 1 : -1;
+        myObstacles.push(new component(obstacleWidth, bufferSize + height, randomColor, x, 0 - bufferSize, "obstacle_top", isGoingUp));
+        myObstacles.push(new component(obstacleWidth, bufferSize + y - height - gap, randomColor, x, height + gap, "obstacle_bottom", isGoingUp));
     }
-
 }
 
 function drawScore() {
@@ -383,7 +531,10 @@ function scrollGround() {
     }
     ctx.drawImage(imageRepository.ground, myGameArea.ground_movement, canvas_height - this.floor_height, canvas_width, imageRepository.ground.height);
     ctx.drawImage(imageRepository.ground, myGameArea.ground_movement + canvas_width, canvas_height - this.floor_height, canvas_width, imageRepository.ground.height);
-    myGameArea.ground_movement -= obstacleSpeed;
+    if (gameState.currentState != gameState.gameOverState) {
+        myGameArea.ground_movement -= obstacleSpeed;
+
+    }
 }
 
 function everyinterval(n) {
@@ -394,8 +545,8 @@ function everyinterval(n) {
 }
 
 function flap() {
-    var flap_sound = new Audio('sounds/sfx_wing.wav');
-    flap_sound.volume = 0.1;
+    let flap_sound = new Audio('sounds/sfx_wing.wav');
+    flap_sound.volume = globalVolume;
     flap_sound.play();
     myGamePiece.gravitySpeed = -flap_speed;
 
