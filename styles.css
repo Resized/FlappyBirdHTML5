@@ -1,5 +1,11 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+
 #settings_canvas,
-#splash_canvas,
+#ui_canvas,
 #background_canvas,
 #game_canvas,
 #GameOverLayer {
@@ -14,7 +20,6 @@
     left: 0;
     right: 0;
     touch-action: manipulation;
-
 }
 
 #game_canvas {

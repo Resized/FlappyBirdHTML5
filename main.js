@@ -1,6 +1,6 @@
 const gravity_value = 0.4;
-const initialObstacleSpeed = 3;
 const flap_speed = 6;
+var initialObstacleSpeed = 1;
 var myGamePiece;
 var myObstacles = [];
 var myScore = 0;
@@ -13,11 +13,15 @@ var obstacleDistance = 0;
 var toUpdateScore = true;
 var flapIndex = 0;
 var globalVolume = 0.1;
+var maxGapDifference = 150;
+var minGap, maxGap;
+
 var difficulty = {
-    'Easy': 0,
-    'Medium': 1,
-    'Hard': 2
+    currentDifficulty: 0,
+    easyDifficulty: 0,
+    hardDifficulty: 1
 }
+
 var gameState = {
     currentState: 1,
     introState: 0,
@@ -46,6 +50,7 @@ function flapAnimation() {
 function settingsScreen() {
     let imgOffsetX = 20;
     let imgOffsetY = 20;
+    let diffImgOffsetX = imageRepository.volUpImg.width + imgOffsetX + 10;
 
     settingsCanvas = document.getElementById('settings_canvas');
     settingsCtx = settingsCanvas.getContext('2d');
@@ -57,34 +62,60 @@ function settingsScreen() {
         settingsCtx.drawImage(imageRepository.volUpImg, canvas_width - imageRepository.volUpImg.width - imgOffsetX, imgOffsetY);
     } else
         settingsCtx.drawImage(imageRepository.volDownImg, canvas_width - imageRepository.volDownImg.width - imgOffsetX, imgOffsetY);
+    if (difficulty.currentDifficulty == difficulty.easyDifficulty) {
+        settingsCtx.drawImage(imageRepository.easyImg, canvas_width - imageRepository.easyImg.width - diffImgOffsetX, imgOffsetY);
+    } else {
+        settingsCtx.drawImage(imageRepository.hardImg, canvas_width - imageRepository.hardImg.width - diffImgOffsetX, imgOffsetY);
 
-    window.addEventListener('click', e => {
-        if (e.offsetX >= canvas_width - imageRepository.volUpImg.width - imgOffsetX && e.offsetX <= canvas_width - imgOffsetX && e.offsetY >= imgOffsetY && e.offsetY <= imgOffsetY + imageRepository.volUpImg.height) {
-            globalVolume = globalVolume == 0.1 ? 0 : 0.1;
-            if (globalVolume != 0) {
-                settingsCtx.drawImage(imageRepository.volUpImg, canvas_width - imageRepository.volUpImg.width - imgOffsetX, imgOffsetY);
-            } else
-                settingsCtx.drawImage(imageRepository.volDownImg, canvas_width - imageRepository.volDownImg.width - imgOffsetX, imgOffsetY);
+    }
+    window.addEventListener('click', handleClick);
+}
 
+function handleClick(e) {
+    let imgOffsetX = 20;
+    let imgOffsetY = 20;
+    let diffImgOffsetX = imageRepository.volUpImg.width + imgOffsetX + 10;
+
+    if (e.offsetX >= canvas_width - imageRepository.volUpImg.width - imgOffsetX && e.offsetX <= canvas_width - imgOffsetX && e.offsetY >= imgOffsetY && e.offsetY <= imgOffsetY + imageRepository.volUpImg.height) {
+        globalVolume = globalVolume == 0.1 ? 0 : 0.1;
+        if (globalVolume != 0) {
+            settingsCtx.drawImage(imageRepository.volUpImg, canvas_width - imageRepository.volUpImg.width - imgOffsetX, imgOffsetY);
+        } else
+            settingsCtx.drawImage(imageRepository.volDownImg, canvas_width - imageRepository.volDownImg.width - imgOffsetX, imgOffsetY);
+
+    }
+    if (e.offsetX >= canvas_width - imageRepository.easyImg.width - diffImgOffsetX && e.offsetX <= canvas_width - diffImgOffsetX && e.offsetY >= imgOffsetY && e.offsetY <= imgOffsetY + imageRepository.easyImg.height) {
+        difficulty.currentDifficulty = difficulty.currentDifficulty == difficulty.easyDifficulty ? difficulty.hardDifficulty : difficulty.easyDifficulty;
+        if (difficulty.currentDifficulty == difficulty.easyDifficulty) {
+            settingsCtx.drawImage(imageRepository.easyImg, canvas_width - imageRepository.easyImg.width - diffImgOffsetX, imgOffsetY);
+        } else
+            settingsCtx.drawImage(imageRepository.hardImg, canvas_width - imageRepository.hardImg.width - diffImgOffsetX, imgOffsetY);
+        if (gameState.currentState == gameState.inGameState) {
+            restartGame();
         }
-    });
+    }
 
+    if (gameState.currentState == gameState.gameOverState) {
+        if (e.offsetX >= 240 && e.offsetX <= 400 && e.offsetY >= 386 && e.offsetY <= 443) {
+            this.gameOverCtx.clearRect(0, 0, this.gameOverCanvas.width, this.gameOverCanvas.height)
+            restartGame();
+        }
+    }
 }
 
 function splashScreen() {
     gameState.currentState = gameState.introState;
-    splashCanvas = document.getElementById('splash_canvas');
-    splashCtx = splashCanvas.getContext('2d');
-    splashCanvas.width = 640;
-    splashCanvas.height = 480;
-    splashCanvas.style.zIndex = 2;
-    splashCtx.drawImage(imageRepository.splashScreenImg, 0, 0);
-    document.body.appendChild(splashCanvas);
-
+    uiCanvas = document.getElementById('ui_canvas');
+    uiCtx = uiCanvas.getContext('2d');
+    uiCanvas.width = 640;
+    uiCanvas.height = 480;
+    uiCanvas.style.zIndex = 2;
+    uiCtx.drawImage(imageRepository.splashScreenImg, 0, 0);
     window.addEventListener('keydown', e => {
         if (e.code == 'Space') {
             gameState.currentState = gameState.inGameState;
-            document.body.removeChild(splashCanvas);
+            this.uiCtx.clearRect(0, 0, this.uiCanvas.width, this.uiCanvas.height);
+            restartGame();
         }
     }, {
         once: true
@@ -95,36 +126,58 @@ function gameOver() {
     gameState.currentState = gameState.gameOverState;
     audio_play(soundsRepository.hit_audio);
     setTimeout(() => audio_play(soundsRepository.die_audio), canvas_height - myGamePiece.y);
-    canvas = document.createElement('canvas')
-    ctx = canvas.getContext('2d');
-    canvas.id = "GameOverLayer";
-    canvas.width = 640;
-    canvas.height = 480;
-    canvas.style.zIndex = 1
-    saveHighscore();
-    ctx.drawImage(imageRepository.gameOverImg, 0, 0);
-    ctx.font = "68px Impact";
-    ctx.textAlign = "center";
-    ctx.fillStyle = '#000000';
-    ctx.lineWidth = 10;
-    ctx.strokeText(myScore, 235, 290);
-    ctx.strokeText(localStorage.highscore, 410, 290);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(myScore, 235, 290);
-    ctx.fillText(localStorage.highscore, 410, 290);
-    document.body.appendChild(canvas);
+    gameOverCanvas = document.getElementById('ui_canvas')
+    gameOverCtx = gameOverCanvas.getContext('2d')
+    saveHighscore()
+    gameOverCtx.drawImage(imageRepository.gameOverImg, 0, 0)
+    gameOverCtx.font = "68px Impact"
+    gameOverCtx.textAlign = "center"
+    gameOverCtx.fillStyle = '#000000'
+    gameOverCtx.lineWidth = 10
+    switch (difficulty.currentDifficulty) {
+        case difficulty.easyDifficulty:
+            gameOverCtx.strokeText(myScore, 235, 290)
+            gameOverCtx.strokeText(localStorage.easyHighscore, 410, 290)
+            gameOverCtx.fillStyle = '#ffffff'
+            gameOverCtx.fillText(myScore, 235, 290)
+            gameOverCtx.fillText(localStorage.easyHighscore, 410, 290)
 
-    canvas.addEventListener('click', e => {
-        if (e.offsetX >= 240 && e.offsetX <= 400 && e.offsetY >= 386 && e.offsetY <= 443) {
-            document.body.removeChild(canvas);
-            restartGame();
-        }
-    });
+            break;
+        case difficulty.hardDifficulty:
+            gameOverCtx.strokeText(myScore, 235, 290)
+            gameOverCtx.strokeText(localStorage.hardHighscore, 410, 290)
+            gameOverCtx.fillStyle = '#ffffff'
+            gameOverCtx.fillText(myScore, 235, 290)
+            gameOverCtx.fillText(localStorage.hardHighscore, 410, 290)
+            break;
+
+        default:
+            break;
+    }
 }
 
 function restartGame() {
     toUpdateScore = true;
-    obstacleSpeed = initialObstacleSpeed;
+    switch (difficulty.currentDifficulty) {
+        case difficulty.easyDifficulty:
+            obstacleSpeed = 3
+            obstacleRiseSpeed = 0
+            maxGapDifference = 170
+            minGap = 100;
+            maxGap = 130;
+
+            break;
+        case difficulty.hardDifficulty:
+            obstacleSpeed = 3
+            obstacleRiseSpeed = 0.3
+            maxGapDifference = 200
+            minGap = 90;
+            maxGap = 120;
+
+            break;
+        default:
+            break;
+    }
     myScore = 0;
     obstacleDistance = 0;
     myGameArea.frameNo = 0;
@@ -156,6 +209,10 @@ var imageRepository = new function () {
     this.volDownImg.src = "images/voldown.png";
     this.volUpImg = new Image();
     this.volUpImg.src = "images/volup.png";
+    this.easyImg = new Image();
+    this.easyImg.src = "images/easy.png";
+    this.hardImg = new Image();
+    this.hardImg.src = "images/hard.png";
 }
 
 var soundsRepository = new function () {
@@ -181,7 +238,6 @@ var myGameArea = {
     start: function () {
         this.canvas.addEventListener("touchstart", () => flap(), false);
         this.context = this.canvas.getContext("2d");
-        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.frameNo = 0;
         this.ground_movement = 0;
         this.interval = setInterval(updateGameArea, 20);
@@ -205,7 +261,7 @@ var myGameArea = {
     }
 }
 
-function handleStart(evt) {
+function handleStart(e) {
     flap();
 }
 
@@ -243,12 +299,6 @@ function scrollBackground() {
         myBackground.scrollIndex += 0.5;
     }
     myBackground.scroll();
-}
-
-class component2 {
-    constructor(width, height, color, x, y, type) {
-
-    }
 }
 
 function component(width, height, color, x, y, type, isGoingUp = 1) {
@@ -315,7 +365,6 @@ function component(width, height, color, x, y, type, isGoingUp = 1) {
             default:
 
                 break;
-
         }
 
     }
@@ -378,24 +427,41 @@ function component(width, height, color, x, y, type, isGoingUp = 1) {
 
 function saveHighscore() {
     if (typeof (Storage) !== "undefined") {
-        if (localStorage.highscore) {
-            if (myScore > localStorage.highscore) {
-                localStorage.highscore = myScore;
-            }
-        } else {
-            localStorage.highscore = myScore;
+        switch (difficulty.currentDifficulty) {
+            case difficulty.easyDifficulty:
+                if (localStorage.easyHighscore) {
+                    if (myScore > localStorage.easyHighscore) {
+                        localStorage.easyHighscore = myScore;
+                    }
+                } else {
+                    localStorage.easyHighscore = myScore;
+                }
+
+                break;
+            case difficulty.hardDifficulty:
+                if (localStorage.hardHighscore) {
+                    if (myScore > localStorage.hardHighscore) {
+                        localStorage.hardHighscore = myScore;
+                    }
+                } else {
+                    localStorage.hardHighscore = myScore;
+                }
+
+                break;
+
+            default:
+                break;
         }
     }
 }
 
 
 function updateGameArea() {
-    var x, height, gap, minHeight, maxHeight, minGap, maxGap, maxGapDifference, randomColor, bufferSize;
-    var obstacleWidth = 40;
+    var x, height, gap, minHeight, maxHeight, randomColor, bufferSize, obstacleWidth;
+    obstacleWidth = 50;
     bufferSize = 300;
     minHeight = 20;
     maxHeight = 250;
-    maxGapDifference = 150;
 
     switch (gameState.currentState) {
         case gameState.introState:
@@ -421,7 +487,7 @@ function updateGameArea() {
             if (myGameArea.frameNo == 1) {
                 drawObstacle();
             } else if (everyinterval(150)) {
-                obstacleSpeed += 0.1;
+                obstacleSpeed += 0.05;
             }
 
             if (obstacleDistance > 150) {
@@ -502,8 +568,6 @@ function updateGameArea() {
         } else {
             height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
         }
-        minGap = 80;
-        maxGap = 120;
         gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
         randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
         let isGoingUp = Math.random() > 0.5 ? 1 : -1;
